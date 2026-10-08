@@ -1,0 +1,14 @@
+# Archives / submission bundles
+*.zip
+Submission/
+
+# Course handout
+IT3012_*.pdf
+
+# Generated report output (rebuild with Report/build_report.py)
+Report/*.html
+Report/*.pdf
+
+# Python
+__pycache__/
+*.pyc
