@@ -1,4 +1,4 @@
-Starting on 9-26 at 19:16:31
+﻿Starting on 10-11 at 20:01:59
 
 Question q3
 ===========
@@ -40,7 +40,7 @@ Question q3
 ### Question q3: 3/3 ###
 
 
-Finished at 19:16:31
+Finished at 20:01:59
 
 Provisional grades
 ==================
