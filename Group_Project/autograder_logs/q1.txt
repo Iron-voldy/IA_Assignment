@@ -7,7 +7,7 @@ Question q1
 *** 	expanded_states:	['A', 'D', 'C']
 *** PASS: test_cases\q1\graph_bfs_vs_dfs.test
 *** 	solution:		['2:A->D', '0:D->G']
-*** 	expanded_states:	['A', 'D']
+*** 	expanded_states:	['A', 'D'] 
 *** PASS: test_cases\q1\graph_infinite.test
 *** 	solution:		['0:A->B', '1:B->C', '1:C->G']
 *** 	expanded_states:	['A', 'B', 'C']
