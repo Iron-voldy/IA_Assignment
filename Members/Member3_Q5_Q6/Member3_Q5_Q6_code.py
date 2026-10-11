@@ -1,6 +1,9 @@
 # Q5 CornersProblem + Q6 cornersHeuristic  (goes into searchAgents.py)
 # Excerpt of the final integrated code in Group_Project/search/. Not runnable on its own.
 
+# Author: Member 3 (Q5 and Q6)
+# Q5 defines the state space for the corners problem; Q6 adds its A* heuristic.
+
 class CornersProblem(search.SearchProblem):
     """
     This search problem finds paths through all four corners of a layout.
