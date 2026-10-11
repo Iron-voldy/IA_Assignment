@@ -1,6 +1,9 @@
 # Q5 CornersProblem + Q6 cornersHeuristic  (goes into searchAgents.py)
 # Excerpt of the final integrated code in Group_Project/search/. Not runnable on its own.
 
+# Author: Member 3 (Q5 and Q6)
+# Q5 defines the state space for the corners problem; Q6 adds its A* heuristic.
+
 class CornersProblem(search.SearchProblem):
     """
     This search problem finds paths through all four corners of a layout.
@@ -30,6 +33,7 @@ class CornersProblem(search.SearchProblem):
         # Q5 (Member 3): state = (position, visitedCorners). visitedCorners is a
         # tuple of 4 booleans aligned with self.corners, so the state is small
         # and hashable and contains no walls / GameState.
+        # One boolean per corner, True if Pacman already starts on that corner.
         visited = tuple(self.startingPosition == c for c in self.corners)
         return (self.startingPosition, visited)
 
@@ -61,6 +65,7 @@ class CornersProblem(search.SearchProblem):
             #   hitsWall = self.walls[nextx][nexty]
 
             "*** YOUR CODE HERE ***"
+            # Unpack the current position and visited flags; every legal move costs 1.
             (x, y), visited = state
             dx, dy = Actions.directionToVector(action)
             nextx, nexty = int(x + dx), int(y + dy)
@@ -118,6 +123,8 @@ def cornersHeuristic(state: Any, problem: CornersProblem):
     def manhattan(a, b):
         return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
+    # Brute-force recursion over the order of the remaining corners (at most 4! orders),
+    # so the cost is tiny. Walls are ignored, which keeps the value a lower bound.
     def cheapestTour(current, todo):
         if not todo:
             return 0
