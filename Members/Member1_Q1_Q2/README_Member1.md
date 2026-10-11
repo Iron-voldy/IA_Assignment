@@ -9,8 +9,8 @@ Implemented the two uninformed graph-search algorithms that all later algorithms
 - `search.py` -> `depthFirstSearch(problem)` (Q1)
 - `search.py` -> `breadthFirstSearch(problem)` (Q2)
 - Full code: `Member1_Q1_Q2_code.py`
-
-## How it works
+ 
+## How it works 
 Both use the same graph-search skeleton: push `(state, path)` on the fringe, pop, return `path` if it is a goal, otherwise mark the state expanded and push unexpanded successors with `path + [action]`.
 - **DFS** uses `util.Stack` (LIFO) -> goes deep first; finds *a* path, not necessarily the shortest.
 - **BFS** uses `util.Queue` (FIFO) -> expands level by level; optimal when every step costs 1.
