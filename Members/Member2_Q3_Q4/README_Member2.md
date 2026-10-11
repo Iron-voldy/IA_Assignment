@@ -15,8 +15,8 @@ Implemented the cost-sensitive (informed) searches.
 - **A*** is UCS with priority f(n) = g(n) + h(n). `nullHeuristic` (h=0) makes it identical to UCS. With an admissible + consistent h it stays optimal and expands fewer nodes (checked with `manhattanHeuristic` on bigMaze).
 
 ## Results (autograder, local run)
-- Q3: PASS -> 4/4 marks
-- Q4: PASS (A* with Manhattan finds optimal cost 210 on bigMaze, expanding fewer nodes than UCS) -> 4/4 marks
+- Q3: PASS -> 3/3 marks
+- Q4: PASS (A* with Manhattan finds optimal cost 210 on bigMaze, expanding fewer nodes than UCS) -> 3/3 marks
 
 ## How to run / verify
 ```
