@@ -123,6 +123,8 @@ def cornersHeuristic(state: Any, problem: CornersProblem):
     def manhattan(a, b):
         return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
+    # Brute-force recursion over the order of the remaining corners (at most 4! orders),
+    # so the cost is tiny. Walls are ignored, which keeps the value a lower bound.
     def cheapestTour(current, todo):
         if not todo:
             return 0
