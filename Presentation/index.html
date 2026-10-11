@@ -1,0 +1,949 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pac-Man Search Project</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Press+Start+2P&display=swap">
+<style>
+/* Layout: one long dark "maze" page that doubles as a slide deck (arrow keys jump
+   section to section). Each member wears their Pac-Man ghost colour everywhere. */
+:root {
+  color-scheme: dark;
+  --bg: #070914;          /* maze floor */
+  --panel: #0d1124;
+  --panel-2: #121833;
+  --line: #222c5e;
+  --wall: #3d5afe;        /* maze wall blue */
+  --wall-fill: #0b1440;
+  --fg: #e9ebf7;
+  --muted: #9ba3c9;
+  --faint: #6a7299;
+  --pac: #ffd600;         /* Pac-Man yellow: the one accent */
+  --food: #ffd9b0;
+  --blinky: #ff5252;      /* Member 1 */
+  --pinky: #ff8fd3;       /* Member 2 */
+  --inky: #3fdcff;        /* Member 3 */
+  --clyde: #ffab40;       /* Member 4 */
+  --ok: #4ee08f;
+  --todo: #ffab40;
+  --code-bg: #090c1c;
+  --kw: #ff8fd3; --str: #b9f18c; --com: #6f7aa8; --num: #ffd600; --fn: #3fdcff;
+
+  --display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  --arcade: "Press Start 2P", var(--mono);
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: calc(64px + env(safe-area-inset-top, 0px)); }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 400 16px/1.6 var(--body);
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--pac); }
+code, pre { font-family: var(--mono); }
+:focus-visible { outline: 2px solid var(--pac); outline-offset: 3px; border-radius: 4px; }
+
+/* ---------- top bar ---------- */
+.bar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+}
+.bar-inner { max-width: 1160px; margin: 0 auto; padding: 0 16px; display: flex; align-items: center; gap: 16px; height: 56px; }
+.brand { font: 700 15px/1 var(--display); letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; display: flex; align-items: center; gap: 10px; color: var(--fg); text-decoration: none; }
+.brand svg { flex: none; }
+.nav { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; flex: 1; min-width: 0; }
+.nav::-webkit-scrollbar { display: none; }
+.nav a { color: var(--muted); text-decoration: none; font: 500 13px/1 var(--display); letter-spacing: .05em; text-transform: uppercase; padding: 8px 10px; border-radius: 6px; white-space: nowrap; }
+.nav a:hover { color: var(--fg); background: var(--panel-2); }
+.nav a.on { color: var(--bg); background: var(--pac); }
+.keys { color: var(--faint); font: 500 12px/1 var(--mono); white-space: nowrap; }
+.keys kbd { border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 2px 6px; color: var(--muted); font: inherit; }
+@media (max-width: 720px) { .keys { display: none; } }
+
+/* ---------- sections ---------- */
+main { max-width: 1160px; margin: 0 auto; padding: 0 16px; }
+section { padding-block: 72px 56px; border-bottom: 1px dashed var(--line); }
+section:last-of-type { border-bottom: 0; }
+.eyebrow { font: 600 12px/1 var(--display); letter-spacing: .16em; text-transform: uppercase; color: var(--pac); margin: 0 0 12px; display: flex; align-items: center; gap: 10px; }
+.eyebrow::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--pac); box-shadow: 0 0 10px var(--pac); }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-spacing: .01em; }
+h1 { font-size: clamp(36px, 6vw, 64px); line-height: 1.02; font-weight: 700; }
+h2 { font-size: clamp(28px, 4vw, 40px); line-height: 1.1; font-weight: 700; }
+h3 { font-size: 21px; line-height: 1.2; font-weight: 600; }
+.lead { font-size: 18px; color: var(--muted); max-width: 64ch; margin: 16px 0 0; }
+.sec-head { margin-bottom: 32px; }
+ul.simple { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+ul.simple li { padding-left: 22px; position: relative; }
+ul.simple li::before { content: ""; position: absolute; left: 4px; top: .62em; width: 7px; height: 7px; border-radius: 50%; background: var(--food); }
+.muted { color: var(--muted); }
+.small { font-size: 14px; }
+
+/* ---------- hero ---------- */
+.hero { display: grid; grid-template-columns: 1.05fr 1fr; gap: 48px; align-items: center; padding-block: 64px 64px; }
+.hero > * { min-width: 0; }
+.hero h1 .y { color: var(--pac); }
+.chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
+.chip { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 7px 14px; font: 500 14px/1 var(--body); }
+.chip b { font: 400 12px/1 var(--arcade); color: var(--pac); }
+.ready { font: 400 13px/1 var(--arcade); color: var(--pac); letter-spacing: .08em; text-align: center; margin-top: 14px; }
+@media (max-width: 860px) { .hero { grid-template-columns: 1fr; gap: 28px; } }
+
+/* ---------- maze replay ---------- */
+.maze { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+.maze canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; }
+.maze-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-top: 10px; font: 500 13px/1.3 var(--mono); color: var(--muted); }
+.maze-foot b { color: var(--fg); font-weight: 500; }
+.replay { margin-left: auto; background: transparent; color: var(--pac); border: 1px solid var(--pac); border-radius: 6px; font: 600 12px/1 var(--display); letter-spacing: .08em; text-transform: uppercase; padding: 8px 12px; cursor: pointer; }
+.replay:hover { background: var(--pac); color: var(--bg); }
+
+/* ---------- brief ---------- */
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+.two > * { min-width: 0; }
+@media (max-width: 860px) { .two { grid-template-columns: 1fr; } }
+.box { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 24px; }
+.box h3 { margin-bottom: 14px; }
+.marks-bar { display: flex; height: 44px; border-radius: 8px; overflow: hidden; margin: 6px 0 12px; border: 1px solid var(--line); }
+.marks-bar span { display: flex; align-items: center; justify-content: center; font: 600 13px/1 var(--display); color: var(--bg); min-width: 0; }
+.legend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 16px; font-size: 14px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; vertical-align: 0; }
+.table-wrap { overflow-x: auto; margin-top: 28px; border: 1px solid var(--line); border-radius: 12px; }
+table { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 15px; }
+th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 12px/1.2 var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); background: var(--panel); }
+tr:last-child td { border-bottom: 0; }
+td.num { font-variant-numeric: tabular-nums; font-family: var(--mono); white-space: nowrap; }
+.who { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font-weight: 500; }
+.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+.pass { color: var(--ok); font: 600 13px/1 var(--display); letter-spacing: .06em; }
+
+/* ---------- asked vs done ---------- */
+.checks { display: grid; gap: 10px; }
+.check { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; padding: 12px 14px; border-radius: 8px; background: var(--panel-2); }
+.check > div { min-width: 0; }
+.tag { font: 600 11px/1 var(--display); letter-spacing: .1em; text-transform: uppercase; padding: 5px 8px; border-radius: 4px; white-space: nowrap; margin-top: 2px; }
+.tag.done { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+.tag.todo { background: color-mix(in srgb, var(--todo) 18%, transparent); color: var(--todo); }
+.check small { display: block; color: var(--muted); font-size: 13.5px; }
+
+/* ---------- team ---------- */
+.team { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 1040px) { .team { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .team { grid-template-columns: 1fr; } }
+.member { background: var(--panel); border: 1px solid var(--line); border-top: 3px solid var(--c); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.member header { display: flex; align-items: center; gap: 12px; }
+.member .qs { font: 400 11px/1 var(--arcade); color: var(--c); margin-top: 6px; }
+.member h3 { font-size: 19px; }
+.member .label { font: 600 11px/1 var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--faint); margin-bottom: 6px; }
+.member ul.simple { gap: 6px; font-size: 15px; }
+.member ul.simple li::before { background: var(--c); }
+.member code { font-size: 13px; color: var(--fg); background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+.member .result { margin-top: auto; padding-top: 12px; border-top: 1px dashed var(--line); font-size: 14px; color: var(--muted); }
+.member .result b { color: var(--fg); font-weight: 600; }
+
+/* ---------- build order ---------- */
+.flow { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; counter-reset: step; }
+@media (max-width: 1040px) { .flow { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .flow { grid-template-columns: 1fr; } }
+.flow li { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; counter-increment: step; position: relative; min-width: 0; }
+.flow li::before { content: counter(step); font: 400 12px/1 var(--arcade); color: var(--c, var(--pac)); display: block; margin-bottom: 10px; }
+.flow b { display: block; font: 600 16px/1.25 var(--display); margin-bottom: 6px; }
+.flow span { font-size: 14px; color: var(--muted); display: block; }
+.fringe { margin-top: 28px; }
+.fringe-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 760px) { .fringe-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.fringe-cell { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; background: var(--panel-2); min-width: 0; }
+.fringe-cell b { font: 600 18px/1.2 var(--display); display: block; }
+.fringe-cell code { color: var(--pac); font-size: 14px; display: block; margin: 6px 0 4px; }
+.fringe-cell span { font-size: 14px; color: var(--muted); }
+
+/* ---------- questions ---------- */
+.q { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr); gap: 32px; padding-block: 36px; border-top: 1px solid var(--line); }
+.q:first-of-type { border-top: 0; padding-top: 0; }
+@media (max-width: 940px) { .q { grid-template-columns: 1fr; } }
+.q-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 16px; margin-bottom: 14px; }
+.q-num { font: 400 18px/1 var(--arcade); color: var(--c); }
+.q-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.pill { font: 500 13px/1 var(--body); border: 1px solid var(--line); border-radius: 999px; padding: 6px 11px; color: var(--muted); display: inline-flex; align-items: center; gap: 7px; }
+.pill.c { border-color: color-mix(in srgb, var(--c) 55%, transparent); color: var(--c); }
+.q .asked { background: var(--panel-2); border-left: 3px solid var(--line); padding: 10px 14px; border-radius: 0 8px 8px 0; font-size: 15px; color: var(--muted); margin-bottom: 18px; }
+.q .asked b { color: var(--fg); font-weight: 600; }
+.q h4 { font: 600 12px/1 var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--faint); margin: 0 0 10px; }
+.q ul.simple li::before { background: var(--c); }
+.q .why { margin-top: 16px; font-size: 15px; padding: 12px 14px; border: 1px dashed color-mix(in srgb, var(--c) 45%, transparent); border-radius: 8px; }
+.q .why b { color: var(--c); font-family: var(--display); letter-spacing: .04em; }
+pre.code { background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; overflow-x: auto; margin: 18px 0 0; font-size: 13.5px; line-height: 1.6; tab-size: 4; }
+pre.code .file { display: block; color: var(--faint); font-size: 12px; margin-bottom: 10px; }
+.tk-kw { color: var(--kw); } .tk-str { color: var(--str); } .tk-com { color: var(--com); font-style: italic; } .tk-num { color: var(--num); } .tk-fn { color: var(--fn); }
+.q-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; min-width: 0; }
+.stat span { display: block; font: 600 11px/1.2 var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--faint); }
+.stat b { display: block; font: 600 22px/1.2 var(--display); font-variant-numeric: tabular-nums; margin-top: 4px; }
+.stat b.ok { color: var(--ok); }
+.cap { font-size: 14px; color: var(--muted); }
+
+/* ---------- results ---------- */
+.term { background: #04050c; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.term-top { display: flex; gap: 7px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--panel); font: 500 12px/1 var(--mono); color: var(--faint); }
+.term-top i { width: 10px; height: 10px; border-radius: 50%; background: var(--line); display: inline-block; }
+.term pre { margin: 0; padding: 16px 18px; overflow-x: auto; font-size: 13px; line-height: 1.6; color: #c9cee8; }
+.term .p { color: var(--ok); } .term .h { color: var(--pac); } .term .f { color: var(--blinky); }
+.score-big { font: 400 clamp(30px, 5vw, 46px)/1 var(--arcade); color: var(--pac); margin: 8px 0 6px; }
+.note { margin-top: 16px; font-size: 14px; color: var(--muted); border-left: 3px solid var(--line); padding-left: 12px; }
+
+footer { max-width: 1160px; margin: 0 auto; padding: 32px 16px 48px; color: var(--faint); font-size: 13.5px; }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <div class="bar-inner">
+    <a class="brand" href="#top" aria-label="Back to top">
+      <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M11 11 L21 5 A10 10 0 1 0 21 17 Z" fill="#ffd600"/></svg>
+      Pac-Man Search
+    </a>
+    <nav class="nav" aria-label="Sections">
+      <a href="#brief">Brief</a>
+      <a href="#done">Asked vs done</a>
+      <a href="#team">Team</a>
+      <a href="#order">Build order</a>
+      <a href="#questions">Q1–Q7</a>
+      <a href="#results">Results</a>
+      <a href="#run">Run it</a>
+    </nav>
+    <span class="keys"><kbd>←</kbd> <kbd>→</kbd> slides</span>
+  </div>
+</div>
+
+<main>
+
+<!-- ======================= HERO ======================= -->
+<section class="hero" id="top">
+  <div>
+    <p class="eyebrow">SE3062 Intelligent Systems · Group assignment</p>
+    <h1>Search Algorithms in <span class="y">Pac-Man</span></h1>
+    <p class="lead">Four of us taught Pac-Man to find his way. We wrote DFS, BFS, Uniform Cost Search and A*, then built smart heuristics for two harder puzzles: touching all four corners, and eating every dot.</p>
+    <div class="chips">
+      <span class="chip"><b>40/40</b> autograder marks (Q1–Q7)</span>
+      <span class="chip"><b>7/7</b> questions pass</span>
+      <span class="chip"><b>4</b> members</span>
+    </div>
+  </div>
+  <div>
+    <div class="maze" data-q="q7" data-hero="1">
+      <canvas aria-label="Animated replay: A* with our food heuristic eating all dots on trickySearch"></canvas>
+      <div class="maze-foot"><span>Q7 · <b>trickySearch</b> · A* + foodHeuristic</span><button class="replay" type="button">Replay</button></div>
+    </div>
+    <p class="ready">READY!</p>
+  </div>
+</section>
+
+<!-- ======================= BRIEF ======================= -->
+<section id="brief">
+  <div class="sec-head">
+    <p class="eyebrow">Part 1 · The brief</p>
+    <h2>What the assignment asked us to do</h2>
+    <p class="lead">We were given the UC Berkeley Pac-Man code (<code>search.zip</code>). We could only edit two files. An autograder checks every question.</p>
+  </div>
+
+  <div class="two">
+    <div class="box">
+      <h3>The rules</h3>
+      <ul class="simple">
+        <li>Group of <b>4</b>. Everyone must understand <b>all</b> of the code, not only their own part.</li>
+        <li>Edit only <code>search.py</code> (Q1–Q4) and <code>searchAgents.py</code> (Q5–Q7).</li>
+        <li>Use <code>util.Stack</code>, <code>util.Queue</code> and <code>util.PriorityQueue</code>, not Python built-ins.</li>
+        <li>Use <b>graph search</b>: never expand the same state twice.</li>
+        <li>Never rename files, functions or classes. The autograder finds them by name.</li>
+        <li>Heuristics must be <b>admissible</b> and <b>consistent</b>. A wrong one scores 0.</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h3>How it is marked (100 marks = 10% of the module)</h3>
+      <div class="marks-bar" role="img" aria-label="Autograder 40, Report 10, Git 10, Viva 40">
+        <span style="flex:40;background:var(--pac)">40</span>
+        <span style="flex:10;background:var(--inky)">10</span>
+        <span style="flex:10;background:var(--pinky)">10</span>
+        <span style="flex:40;background:var(--clyde)">40</span>
+      </div>
+      <div class="legend">
+        <div><i style="background:var(--pac)"></i>Autograder Q1–Q7 · group</div>
+        <div><i style="background:var(--inky)"></i>Report · group</div>
+        <div><i style="background:var(--pinky)"></i>Git commits · each person</div>
+        <div><i style="background:var(--clyde)"></i>6-minute viva · each person</div>
+      </div>
+      <h3 style="margin-top:22px">What we hand in</h3>
+      <ul class="simple">
+        <li><code>Group_XX_Report.pdf</code>: for every question, the code we changed, an autograder screenshot and a ≤200-word explanation. At the end, the Git link, commit screenshots, a contribution table and an AI declaration.</li>
+        <li><code>Group_XX_Code.zip</code>: only <code>search.py</code> and <code>searchAgents.py</code>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Q</th><th>Task</th><th>Where</th><th>Marks</th><th>Who</th><th>Our result</th></tr></thead>
+      <tbody>
+        <tr><td class="num">Q1</td><td>Depth First Search (graph search)</td><td><code>depthFirstSearch</code></td><td class="num">4</td><td><span class="who"><i class="dot" style="background:var(--blinky)"></i>Member 1</span></td><td><span class="pass">PASS</span> · 4/4</td></tr>
+        <tr><td class="num">Q2</td><td>Breadth First Search</td><td><code>breadthFirstSearch</code></td><td class="num">4</td><td><span class="who"><i class="dot" style="background:var(--blinky)"></i>Member 1</span></td><td><span class="pass">PASS</span> · 4/4</td></tr>
+        <tr><td class="num">Q3</td><td>Uniform Cost Search (changing step costs)</td><td><code>uniformCostSearch</code></td><td class="num">4</td><td><span class="who"><i class="dot" style="background:var(--pinky)"></i>Member 2</span></td><td><span class="pass">PASS</span> · 4/4</td></tr>
+        <tr><td class="num">Q4</td><td>A* Search with a heuristic</td><td><code>aStarSearch</code></td><td class="num">4</td><td><span class="who"><i class="dot" style="background:var(--pinky)"></i>Member 2</span></td><td><span class="pass">PASS</span> · 4/4</td></tr>
+        <tr><td class="num">Q5</td><td>Corners problem: design the state</td><td><code>CornersProblem</code></td><td class="num">8</td><td><span class="who"><i class="dot" style="background:var(--inky)"></i>Member 3</span></td><td><span class="pass">PASS</span> · 8/8</td></tr>
+        <tr><td class="num">Q6</td><td>Corners heuristic (≤1200 nodes for full marks)</td><td><code>cornersHeuristic</code></td><td class="num">8</td><td><span class="who"><i class="dot" style="background:var(--inky)"></i>Member 3</span></td><td><span class="pass">PASS</span> · 741 nodes · 8/8</td></tr>
+        <tr><td class="num">Q7</td><td>Food heuristic (≤9000 nodes for full marks)</td><td><code>foodHeuristic</code></td><td class="num">8</td><td><span class="who"><i class="dot" style="background:var(--clyde)"></i>Member 4</span></td><td><span class="pass">PASS</span> · 4137 nodes · 8/8</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ======================= ASKED VS DONE ======================= -->
+<section id="done">
+  <div class="sec-head">
+    <p class="eyebrow">Part 2 · Asked vs done</p>
+    <h2>What we have finished, and what is left</h2>
+    <p class="lead">The code is complete and every question passes. A few report and Git items still need real details before we submit.</p>
+  </div>
+  <div class="two">
+    <div class="checks">
+      <div class="check"><span class="tag done">Done</span><div>DFS, BFS, UCS and A* in <code>search.py</code><small>Q1–Q4 all pass.</small></div></div>
+      <div class="check"><span class="tag done">Done</span><div><code>CornersProblem</code> and <code>cornersHeuristic</code><small>Q5–Q6 pass, 741 nodes (limit for full marks is 1200).</small></div></div>
+      <div class="check"><span class="tag done">Done</span><div><code>foodHeuristic</code><small>Q7 passes, 4137 nodes (limit for full marks is 9000).</small></div></div>
+      <div class="check"><span class="tag done">Done</span><div>Used only <code>util</code> data structures, renamed nothing<small>Exactly as the rules ask.</small></div></div>
+      <div class="check"><span class="tag done">Done</span><div>Autograder output saved for every question<small><code>Group_Project/autograder_logs/</code></small></div></div>
+      <div class="check"><span class="tag done">Done</span><div>Report drafted with all 9 sections, plus the code zip<small><code>Report/Group_XX_Report.pdf</code> · zip holds only the two edited files.</small></div></div>
+    </div>
+    <div class="checks">
+      <div class="check"><span class="tag todo">To do</span><div>Swap <code>Group_XX</code> for our real group number<small>In the report title, the PDF name and the zip name.</small></div></div>
+      <div class="check"><span class="tag todo">To do</span><div>Put real names and student IDs in place of “Member1–4”<small>Report section 7 and the member READMEs.</small></div></div>
+      <div class="check"><span class="tag todo">To do</span><div>Add the public GitHub link to report section 5<small>github.com/Iron-voldy/IA_Assignment</small></div></div>
+      <div class="check"><span class="tag todo">To do</span><div>Each member pushes their own commits<small>Git is worth 10 marks <b>per person</b>. The repo has 1 commit so far.</small></div></div>
+      <div class="check"><span class="tag todo">To do</span><div>Screenshot the commit history and contribution graph<small>For report section 6.</small></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= TEAM ======================= -->
+<section id="team">
+  <div class="sec-head">
+    <p class="eyebrow">Part 3 · The team</p>
+    <h2>Who did what</h2>
+    <p class="lead">Each member is one ghost colour. That colour marks their work on the rest of this page.</p>
+  </div>
+  <div class="team">
+    <article class="member" style="--c:var(--blinky)">
+      <header><svg class="ghost" width="34" height="34" viewBox="0 0 14 14" aria-hidden="true"></svg><div><h3>Member 1</h3><div class="qs">Q1 · Q2</div></div></header>
+      <div><div class="label">Did</div>
+        <ul class="simple">
+          <li>Wrote <b>DFS</b>: goes as deep as it can first.</li>
+          <li>Wrote <b>BFS</b>: checks closest places first.</li>
+          <li>Built the search “skeleton” every later question reuses.</li>
+        </ul></div>
+      <div><div class="label">Edited</div><code>depthFirstSearch</code> <code>breadthFirstSearch</code></div>
+      <div><div class="label">Reviews</div>Member 2's pull request</div>
+      <p class="result">Result: <b>Q1 4/4 · Q2 4/4</b><br>BFS finds the 68-step shortest path.</p>
+    </article>
+    <article class="member" style="--c:var(--pinky)">
+      <header><svg class="ghost" width="34" height="34" viewBox="0 0 14 14" aria-hidden="true"></svg><div><h3>Member 2</h3><div class="qs">Q3 · Q4</div></div></header>
+      <div><div class="label">Did</div>
+        <ul class="simple">
+          <li>Wrote <b>UCS</b>: always opens the cheapest path so far.</li>
+          <li>Wrote <b>A*</b>: cheapest path so far + a guess of what is left.</li>
+          <li>Checked A* with Manhattan distance on bigMaze.</li>
+        </ul></div>
+      <div><div class="label">Edited</div><code>uniformCostSearch</code> <code>aStarSearch</code></div>
+      <div><div class="label">Reviews</div>Member 3's pull request</div>
+      <p class="result">Result: <b>Q3 4/4 · Q4 4/4</b><br>A* expands 549 nodes vs 620 for UCS.</p>
+    </article>
+    <article class="member" style="--c:var(--inky)">
+      <header><svg class="ghost" width="34" height="34" viewBox="0 0 14 14" aria-hidden="true"></svg><div><h3>Member 3</h3><div class="qs">Q5 · Q6</div></div></header>
+      <div><div class="label">Did</div>
+        <ul class="simple">
+          <li>Designed the corners <b>state</b>: position + 4 yes/no flags.</li>
+          <li>Wrote the goal test and the successor moves.</li>
+          <li>Wrote a <b>heuristic</b>: shortest tour of the corners, ignoring walls.</li>
+        </ul></div>
+      <div><div class="label">Edited</div><code>CornersProblem</code> <code>cornersHeuristic</code></div>
+      <div><div class="label">Reviews</div>Member 4's pull request</div>
+      <p class="result">Result: <b>Q5 8/8 · Q6 8/8</b><br>741 nodes instead of 1966 with BFS.</p>
+    </article>
+    <article class="member" style="--c:var(--clyde)">
+      <header><svg class="ghost" width="34" height="34" viewBox="0 0 14 14" aria-hidden="true"></svg><div><h3>Member 4</h3><div class="qs">Q7 + lead</div></div></header>
+      <div><div class="label">Did</div>
+        <ul class="simple">
+          <li>Wrote the <b>food heuristic</b>: real maze distance to the farthest dot.</li>
+          <li>Cached distances so each one is worked out only once.</li>
+          <li>Merged all code, built the report and the submission zip.</li>
+        </ul></div>
+      <div><div class="label">Edited</div><code>foodHeuristic</code> + report, zip</div>
+      <div><div class="label">Reviews</div>Member 1's pull request</div>
+      <p class="result">Result: <b>Q7 8/8</b><br>4137 nodes, under the 9000 limit.</p>
+    </article>
+  </div>
+</section>
+
+<!-- ======================= BUILD ORDER ======================= -->
+<section id="order">
+  <div class="sec-head">
+    <p class="eyebrow">Part 4 · How the parts fit</p>
+    <h2>Each part builds on the one before</h2>
+    <p class="lead">The order matters: later questions call the code from earlier ones. This is the order the work came together.</p>
+  </div>
+  <ol class="flow">
+    <li style="--c:var(--blinky)"><b>Setup + skeleton</b><span>Member 1 writes the graph-search loop with DFS and BFS.</span></li>
+    <li style="--c:var(--pinky)"><b>Costs</b><span>Member 2 swaps in a priority queue: UCS.</span></li>
+    <li style="--c:var(--pinky)"><b>Guesses</b><span>Member 2 adds a heuristic to the priority: A*.</span></li>
+    <li style="--c:var(--inky)"><b>Corners</b><span>Member 3's problem runs on BFS (Q5) and A* (Q6).</span></li>
+    <li style="--c:var(--clyde)"><b>All dots</b><span>Member 4's heuristic runs on A* and uses BFS for maze distance.</span></li>
+    <li style="--c:var(--clyde)"><b>Ship it</b><span>Member 4 merges, runs the full autograder, builds report + zip.</span></li>
+  </ol>
+
+  <div class="fringe">
+    <h3 style="margin-bottom:14px">Same loop, different fringe</h3>
+    <p class="muted" style="margin:0 0 16px;max-width:70ch">Every algorithm runs the same 4 steps: put the start on the fringe; take one out; if it is the goal, return its path; otherwise mark it expanded and add its neighbours. The only change is <b>which</b> node comes out next.</p>
+    <div class="fringe-row">
+      <div class="fringe-cell"><b>DFS</b><code>util.Stack</code><span>Last in, first out. Dives deep.</span></div>
+      <div class="fringe-cell"><b>BFS</b><code>util.Queue</code><span>First in, first out. Ring by ring.</span></div>
+      <div class="fringe-cell"><b>UCS</b><code>PriorityQueue(g)</code><span>Cheapest cost so far first.</span></div>
+      <div class="fringe-cell"><b>A*</b><code>PriorityQueue(g + h)</code><span>Cost so far + guess of cost left.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= QUESTIONS ======================= -->
+<section id="questions">
+  <div class="sec-head">
+    <p class="eyebrow">Part 5 · Question by question</p>
+    <h2>The code, and what it does</h2>
+    <p class="lead">Each maze on the right is a replay of our real code. Tinted squares are the places the search looked at, in the real order. The yellow line is the path it returned. Press Replay to watch it again.</p>
+  </div>
+
+  <!-- Q1 -->
+  <article class="q" id="q1" style="--c:var(--blinky)">
+    <div>
+      <div class="q-head"><span class="q-num">Q1</span><h3>Depth First Search</h3></div>
+      <div class="q-meta"><span class="pill c"><i class="dot" style="background:var(--c)"></i>Member 1</span><span class="pill">search.py</span><span class="pill">4 marks</span></div>
+      <p class="asked"><b>Asked:</b> find a path to the food dot using DFS, as graph search.</p>
+      <h4>Our idea</h4>
+      <ul class="simple">
+        <li>Keep a <b>stack</b> of (place, path to get there).</li>
+        <li>Always take the <b>newest</b> one, so Pac-Man dives down one corridor first.</li>
+        <li>Keep an <b>expanded</b> set so we never open the same place twice.</li>
+        <li>If the stack runs out, return an empty list (no path).</li>
+      </ul>
+<pre class="code"><span class="file">search.py · depthFirstSearch</span><code class="py">fringe = util.Stack()
+fringe.push((problem.getStartState(), []))
+expanded = set()
+while not fringe.isEmpty():
+    state, path = fringe.pop()
+    if problem.isGoalState(state):
+        return path
+    if state not in expanded:
+        expanded.add(state)
+        for successor, action, _ in problem.getSuccessors(state):
+            if successor not in expanded:
+                fringe.push((successor, path + [action]))
+return []</code></pre>
+      <p class="why"><b>Why it works:</b> the expanded set stops loops, so DFS always ends. It finds <i>a</i> path, but not always the shortest. Here it is 130 steps long, while BFS finds 68.</p>
+    </div>
+    <div class="q-side">
+      <div class="maze" data-q="q1"><canvas aria-label="Replay of DFS on mediumMaze"></canvas>
+        <div class="maze-foot"><span><b>mediumMaze</b> · DFS</span><button class="replay" type="button">Replay</button></div></div>
+      <div class="stats"><div class="stat"><span>Nodes expanded</span><b>146</b></div><div class="stat"><span>Path length</span><b>130</b></div><div class="stat"><span>Autograder</span><b class="ok">PASS</b></div></div>
+    </div>
+  </article>
+
+  <!-- Q2 -->
+  <article class="q" id="q2" style="--c:var(--blinky)">
+    <div>
+      <div class="q-head"><span class="q-num">Q2</span><h3>Breadth First Search</h3></div>
+      <div class="q-meta"><span class="pill c"><i class="dot" style="background:var(--c)"></i>Member 1</span><span class="pill">search.py</span><span class="pill">4 marks</span></div>
+      <p class="asked"><b>Asked:</b> the same, but with BFS. Only the fringe should change.</p>
+      <h4>Our idea</h4>
+      <ul class="simple">
+        <li>Copy the DFS loop and swap the stack for a <b>queue</b>.</li>
+        <li>The <b>oldest</b> entry comes out first, so the search spreads out in rings.</li>
+        <li>The first time the goal comes out, it was reached in the fewest steps.</li>
+      </ul>
+<pre class="code"><span class="file">search.py · breadthFirstSearch</span><code class="py">fringe = util.Queue()          # the only line that differs from DFS
+fringe.push((problem.getStartState(), []))
+expanded = set()
+while not fringe.isEmpty():
+    state, path = fringe.pop()
+    if problem.isGoalState(state):
+        return path
+    if state not in expanded:
+        expanded.add(state)
+        for successor, action, _ in problem.getSuccessors(state):
+            if successor not in expanded:
+                fringe.push((successor, path + [action]))
+return []</code></pre>
+      <p class="why"><b>Why it works:</b> every step costs 1, so “fewest steps” means “cheapest”. BFS is optimal here. It looks at more places (269) but finds the shortest path (68).</p>
+    </div>
+    <div class="q-side">
+      <div class="maze" data-q="q2"><canvas aria-label="Replay of BFS on mediumMaze"></canvas>
+        <div class="maze-foot"><span><b>mediumMaze</b> · BFS</span><button class="replay" type="button">Replay</button></div></div>
+      <div class="stats"><div class="stat"><span>Nodes expanded</span><b>269</b></div><div class="stat"><span>Path length</span><b>68</b></div><div class="stat"><span>Autograder</span><b class="ok">PASS</b></div></div>
+    </div>
+  </article>
+
+  <!-- Q3 -->
+  <article class="q" id="q3" style="--c:var(--pinky)">
+    <div>
+      <div class="q-head"><span class="q-num">Q3</span><h3>Uniform Cost Search</h3></div>
+      <div class="q-meta"><span class="pill c"><i class="dot" style="background:var(--c)"></i>Member 2</span><span class="pill">search.py</span><span class="pill">4 marks</span></div>
+      <p class="asked"><b>Asked:</b> find the <b>cheapest</b> path when steps can cost different amounts.</p>
+      <h4>Our idea</h4>
+      <ul class="simple">
+        <li>Use a <b>priority queue</b>. The priority is the total cost so far, <code>g(n)</code>.</li>
+        <li>Each entry also stores its cost, so the next step adds to it.</li>
+        <li>Test for the goal when a node is <b>taken out</b>, not when it is put in.</li>
+      </ul>
+<pre class="code"><span class="file">search.py · uniformCostSearch</span><code class="py">fringe = util.PriorityQueue()
+fringe.push((problem.getStartState(), [], 0), 0)
+expanded = set()
+while not fringe.isEmpty():
+    state, path, cost = fringe.pop()
+    if problem.isGoalState(state):
+        return path
+    if state not in expanded:
+        expanded.add(state)
+        for successor, action, stepCost in problem.getSuccessors(state):
+            if successor not in expanded:
+                newCost = cost + stepCost
+                fringe.push((successor, path + [action], newCost), newCost)
+return []</code></pre>
+      <p class="why"><b>Why it works:</b> the cheapest path always comes out first, so when the goal comes out nothing cheaper is left. In the replay, the east side is cheap (cost 0.5<sup>x</sup>), so Pac-Man hugs the right.</p>
+    </div>
+    <div class="q-side">
+      <div class="maze" data-q="q3"><canvas aria-label="Replay of UCS with the StayEast cost on mediumDottedMaze"></canvas>
+        <div class="maze-foot"><span><b>mediumDottedMaze</b> · UCS, StayEast cost</span><button class="replay" type="button">Replay</button></div></div>
+      <div class="stats"><div class="stat"><span>Nodes expanded</span><b>186</b></div><div class="stat"><span>Path cost</span><b>≈1.0</b></div><div class="stat"><span>Autograder</span><b class="ok">PASS</b></div></div>
+    </div>
+  </article>
+
+  <!-- Q4 -->
+  <article class="q" id="q4" style="--c:var(--pinky)">
+    <div>
+      <div class="q-head"><span class="q-num">Q4</span><h3>A* Search</h3></div>
+      <div class="q-meta"><span class="pill c"><i class="dot" style="background:var(--c)"></i>Member 2</span><span class="pill">search.py</span><span class="pill">4 marks</span></div>
+      <p class="asked"><b>Asked:</b> UCS plus a heuristic <code>h</code>, an estimate of the cost still to go.</p>
+      <h4>Our idea</h4>
+      <ul class="simple">
+        <li>Same as UCS, but the priority is <b>f = g + h</b>.</li>
+        <li><code>g</code> = cost so far. <code>h</code> = guess of cost left.</li>
+        <li>Places that are heading the right way come out first.</li>
+        <li>With <code>nullHeuristic</code> (h = 0) it is exactly UCS.</li>
+      </ul>
+<pre class="code"><span class="file">search.py · aStarSearch</span><code class="py">start = problem.getStartState()
+fringe = util.PriorityQueue()
+fringe.push((start, [], 0), heuristic(start, problem))
+expanded = set()
+while not fringe.isEmpty():
+    state, path, cost = fringe.pop()
+    if problem.isGoalState(state):
+        return path
+    if state not in expanded:
+        expanded.add(state)
+        for successor, action, stepCost in problem.getSuccessors(state):
+            if successor not in expanded:
+                newCost = cost + stepCost
+                fringe.push((successor, path + [action], newCost),
+                            newCost + heuristic(successor, problem))
+return []</code></pre>
+      <p class="why"><b>Why it works:</b> if <code>h</code> never guesses too high (admissible) and never drops by more than one step's cost (consistent), A* is still optimal. It just skips useless places: 549 nodes vs 620 for UCS, same 210-step path.</p>
+    </div>
+    <div class="q-side">
+      <div class="maze" data-q="q4"><canvas aria-label="Replay of A* with Manhattan heuristic on bigMaze"></canvas>
+        <div class="maze-foot"><span><b>bigMaze</b> · A* + Manhattan</span><button class="replay" type="button">Replay</button></div></div>
+      <div class="stats"><div class="stat"><span>Nodes (A*)</span><b>549</b></div><div class="stat"><span>Nodes (UCS)</span><b>620</b></div><div class="stat"><span>Path cost</span><b>210</b></div></div>
+    </div>
+  </article>
+
+  <!-- Q5 -->
+  <article class="q" id="q5" style="--c:var(--inky)">
+    <div>
+      <div class="q-head"><span class="q-num">Q5</span><h3>Finding All the Corners</h3></div>
+      <div class="q-meta"><span class="pill c"><i class="dot" style="background:var(--c)"></i>Member 3</span><span class="pill">searchAgents.py</span><span class="pill">8 marks</span></div>
+      <p class="asked"><b>Asked:</b> design a search problem whose goal is to touch all four corners. Keep the state small and hashable.</p>
+      <h4>Our idea</h4>
+      <ul class="simple">
+        <li>State = <b>(position, visited)</b>. <code>visited</code> is 4 True/False flags, one per corner.</li>
+        <li>Goal: all 4 flags are True.</li>
+        <li>For each move that does not hit a wall, step there and tick the corner if we landed on one.</li>
+        <li>No walls or game state inside the state, so it stays tiny.</li>
+      </ul>
+<pre class="code"><span class="file">searchAgents.py · CornersProblem</span><code class="py">def getStartState(self):
+    visited = tuple(self.startingPosition == c for c in self.corners)
+    return (self.startingPosition, visited)
+
+def isGoalState(self, state):
+    return all(state[1])
+
+# inside getSuccessors, for each action:
+(x, y), visited = state
+dx, dy = Actions.directionToVector(action)
+nextx, nexty = int(x + dx), int(y + dy)
+if not self.walls[nextx][nexty]:
+    nextPos = (nextx, nexty)
+    newVisited = tuple(v or nextPos == c
+                       for v, c in zip(visited, self.corners))
+    successors.append(((nextPos, newVisited), action, 1))</code></pre>
+      <p class="why"><b>Why it works:</b> the same square counts as a new state once a new corner is ticked, so Pac-Man may walk back the way he came. BFS then finds the shortest tour, 106 steps.</p>
+    </div>
+    <div class="q-side">
+      <div class="maze" data-q="q5"><canvas aria-label="Replay of BFS on the corners problem, mediumCorners"></canvas>
+        <div class="maze-foot"><span><b>mediumCorners</b> · BFS</span><button class="replay" type="button">Replay</button></div></div>
+      <div class="stats"><div class="stat"><span>Nodes expanded</span><b>1966</b></div><div class="stat"><span>Path length</span><b>106</b></div><div class="stat"><span>Autograder</span><b class="ok">PASS</b></div></div>
+    </div>
+  </article>
+
+  <!-- Q6 -->
+  <article class="q" id="q6" style="--c:var(--inky)">
+    <div>
+      <div class="q-head"><span class="q-num">Q6</span><h3>Corners Heuristic</h3></div>
+      <div class="q-meta"><span class="pill c"><i class="dot" style="background:var(--c)"></i>Member 3</span><span class="pill">searchAgents.py</span><span class="pill">8 marks</span></div>
+      <p class="asked"><b>Asked:</b> a heuristic for Q5 that is admissible and consistent. Full marks at ≤1200 nodes.</p>
+      <h4>Our idea</h4>
+      <ul class="simple">
+        <li>Pretend there are <b>no walls</b>. That is a “relaxed” (easier) problem.</li>
+        <li>Try every order of visiting the corners still left (at most 4! = 24).</li>
+        <li>Return the shortest tour, using Manhattan distance.</li>
+        <li>Return 0 when all corners are visited.</li>
+      </ul>
+<pre class="code"><span class="file">searchAgents.py · cornersHeuristic</span><code class="py">position, visited = state
+remaining = [c for c, v in zip(corners, visited) if not v]
+if not remaining:
+    return 0
+
+def manhattan(a, b):
+    return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+def cheapestTour(current, todo):
+    if not todo:
+        return 0
+    return min(manhattan(current, c) + cheapestTour(c, [r for r in todo if r != c])
+               for c in todo)
+
+return cheapestTour(position, remaining)</code></pre>
+      <p class="why"><b>Why it works:</b> walls only make paths longer, so the no-wall tour is never more than the real cost (admissible). One real step changes the tour by at most 1 (consistent). The result is 741 nodes, down from 1966.</p>
+    </div>
+    <div class="q-side">
+      <div class="maze" data-q="q6"><canvas aria-label="Replay of A* with the corners heuristic on mediumCorners"></canvas>
+        <div class="maze-foot"><span><b>mediumCorners</b> · A* + cornersHeuristic</span><button class="replay" type="button">Replay</button></div></div>
+      <div class="stats"><div class="stat"><span>Nodes expanded</span><b>741</b></div><div class="stat"><span>Limit for 8/8</span><b>1200</b></div><div class="stat"><span>Path length</span><b>106</b></div></div>
+    </div>
+  </article>
+
+  <!-- Q7 -->
+  <article class="q" id="q7" style="--c:var(--clyde)">
+    <div>
+      <div class="q-head"><span class="q-num">Q7</span><h3>Eating All the Dots</h3></div>
+      <div class="q-meta"><span class="pill c"><i class="dot" style="background:var(--c)"></i>Member 4</span><span class="pill">searchAgents.py</span><span class="pill">8 marks</span></div>
+      <p class="asked"><b>Asked:</b> a heuristic for eating every dot. Admissible and consistent. Full marks at ≤9000 nodes on trickySearch.</p>
+      <h4>Our idea</h4>
+      <ul class="simple">
+        <li>Find the dot that is <b>farthest</b> from Pac-Man.</li>
+        <li>Use the <b>real maze distance</b> (walls included), from the given BFS helper <code>mazeDistance</code>.</li>
+        <li>Save each distance in <code>problem.heuristicInfo</code>, so each BFS runs only once.</li>
+        <li>Return 0 when no food is left.</li>
+      </ul>
+<pre class="code"><span class="file">searchAgents.py · foodHeuristic</span><code class="py">position, foodGrid = state
+food = foodGrid.asList()
+if not food:
+    return 0
+cache = problem.heuristicInfo.setdefault('distCache', {})
+
+def dist(a, b):
+    key = (a, b)
+    if key not in cache:
+        cache[key] = mazeDistance(a, b, problem.startingGameState)
+    return cache[key]
+
+return max(dist(position, f) for f in food)</code></pre>
+      <p class="why"><b>Why it works:</b> to eat every dot, Pac-Man must at least walk to the farthest one, so the guess is never too high (admissible). One step changes any maze distance by at most 1, so h(n) &lt;= 1 + h(n') (consistent).</p>
+    </div>
+    <div class="q-side">
+      <div class="maze" data-q="q7"><canvas aria-label="Replay of A* with the food heuristic on trickySearch"></canvas>
+        <div class="maze-foot"><span><b>trickySearch</b> · A* + foodHeuristic</span><button class="replay" type="button">Replay</button></div></div>
+      <div class="stats"><div class="stat"><span>Nodes expanded</span><b>4137</b></div><div class="stat"><span>Limit for 8/8</span><b>9000</b></div><div class="stat"><span>Path cost</span><b>60</b></div></div>
+      <p class="cap">Why not add up the distances to all dots? Pac-Man eats many dots on one walk, so the sum guesses too high. That breaks admissibility and can give a wrong answer.</p>
+    </div>
+  </article>
+</section>
+
+<!-- ======================= RESULTS ======================= -->
+<section id="results">
+  <div class="sec-head">
+    <p class="eyebrow">Part 6 · Results</p>
+    <h2>Autograder output</h2>
+  </div>
+  <div class="two">
+    <div class="term">
+      <div class="term-top"><i></i><i></i><i></i>&nbsp; python autograder.py --no-graphics</div>
+<pre><span class="h">Question q1</span>
+<span class="p">*** PASS</span>: test_cases\q1\pacman_1.test
+***     solution length: 130
+***     nodes expanded:  146
+<span class="h">Question q2</span>
+<span class="p">*** PASS</span>: test_cases\q2\pacman_1.test
+***     solution length: 68
+***     nodes expanded:  269
+<span class="h">Question q6</span>
+path length: 106
+<span class="p">*** PASS</span>: Heuristic resulted in expansion of 741 nodes
+<span class="h">Question q7</span>
+<span class="p">*** PASS</span>: test_cases\q7\food_heuristic_grade_tricky.test
+***     expanded nodes: 4137
+
+Provisional grades
+==================
+Question q1: 3/3
+Question q2: 3/3
+Question q3: 3/3
+Question q4: 3/3
+Question q5: 3/3
+Question q6: 3/3
+Question q7: 5/4
+<span class="f">Question q8: 0/3</span></pre>
+    </div>
+    <div class="box">
+      <h3>What that means for our marks</h3>
+      <p class="score-big">40/40</p>
+      <p class="muted" style="margin:0 0 16px">Autograder marks, by the assignment's own scheme.</p>
+      <ul class="simple">
+        <li>The autograder uses its own points (3 each, 4 for Q7). The course turns them into marks: Q1–Q4 are 4 each, Q5–Q7 are 8 each.</li>
+        <li>Q6: 741 nodes ≤ 1200, so <b>8/8</b>.</li>
+        <li>Q7: 4137 nodes ≤ 9000, so <b>8/8</b>. The autograder even gives a bonus point (5/4) for being under 7000.</li>
+      </ul>
+      <p class="note">q8 (<code>findPathToClosestDot</code>) is part of the original Berkeley project but <b>not</b> part of our brief, which stops at Q7. That is why the raw total shows 23/25.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= RUN ======================= -->
+<section id="run">
+  <div class="sec-head">
+    <p class="eyebrow">Part 7 · Try it</p>
+    <h2>Run it yourself</h2>
+    <p class="lead">Plain Python, no extra packages. The brief suggests a Conda environment with Python 3.9–3.11. Our runs used Python 3.13 and worked the same.</p>
+  </div>
+  <div class="two">
+<pre class="code"><span class="file">grade everything</span><code class="sh">cd Group_Project/search
+python autograder.py --no-graphics
+python autograder.py -q q7     # one question</code></pre>
+<pre class="code"><span class="file">watch Pac-Man play</span><code class="sh">python pacman.py -l mediumMaze -p SearchAgent -a fn=bfs
+python pacman.py -l bigMaze -z .5 -p SearchAgent -a fn=astar,heuristic=manhattanHeuristic
+python pacman.py -l mediumCorners -p AStarCornersAgent -z 0.5
+python pacman.py -l trickySearch -p AStarFoodSearchAgent</code></pre>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  Every replay and number on this page comes from running our own <code>search.py</code> and <code>searchAgents.py</code>
+  (<code>Presentation/build_demo_data.py</code>). Repository: <a href="https://github.com/Iron-voldy/IA_Assignment">github.com/Iron-voldy/IA_Assignment</a>
+</footer>
+
+<script src="demo_data.js"></script>
+<script>
+(function () {
+  "use strict";
+  var css = getComputedStyle(document.documentElement);
+  function v(name) { return css.getPropertyValue(name).trim(); }
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---------- ghosts (drawn once, coloured by --c) ---------- */
+  var GHOST = "M1 13V6a6 6 0 0 1 12 0v7l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5z";
+  document.querySelectorAll("svg.ghost").forEach(function (s) {
+    s.innerHTML = '<path d="' + GHOST + '" fill="currentColor"/>' +
+      '<circle cx="5" cy="6" r="1.7" fill="#fff"/><circle cx="9.4" cy="6" r="1.7" fill="#fff"/>' +
+      '<circle cx="5.6" cy="6.2" r=".85" fill="#1a237e"/><circle cx="10" cy="6.2" r=".85" fill="#1a237e"/>';
+    s.style.color = "var(--c)";
+  });
+
+  /* ---------- tiny Python highlighter ---------- */
+  var KW = /^(def|return|if|not|in|for|while|and|or|lambda|import|from|class|is|None|True|False|else|elif)$/;
+  function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function highlight(src) {
+    var re = /(#[^\n]*)|('(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*")|\b(\d+(?:\.\d+)?)\b|\b([A-Za-z_]\w*)\b(\s*\()?/g;
+    var out = "", last = 0, m;
+    while ((m = re.exec(src))) {
+      out += esc(src.slice(last, m.index));
+      if (m[1]) out += '<span class="tk-com">' + esc(m[1]) + "</span>";
+      else if (m[2]) out += '<span class="tk-str">' + esc(m[2]) + "</span>";
+      else if (m[3]) out += '<span class="tk-num">' + m[3] + "</span>";
+      else if (KW.test(m[4])) out += '<span class="tk-kw">' + m[4] + "</span>" + (m[5] || "");
+      else if (m[5]) out += '<span class="tk-fn">' + m[4] + "</span>" + m[5];
+      else out += m[4];
+      last = re.lastIndex;
+    }
+    return out + esc(src.slice(last));
+  }
+  document.querySelectorAll("code.py").forEach(function (c) { c.innerHTML = highlight(c.textContent); });
+  document.querySelectorAll("code.sh").forEach(function (c) {
+    c.innerHTML = c.innerHTML.replace(/(#[^\n]*)/g, '<span class="tk-com">$1</span>')
+      .replace(/^(python|cd)\b/gm, '<span class="tk-fn">$1</span>');
+  });
+
+  /* ---------- maze replays ---------- */
+  var DEMO = window.DEMO || {};
+  var TINT = { q1: "--blinky", q2: "--blinky", q3: "--pinky", q4: "--pinky", q5: "--inky", q6: "--inky", q7: "--clyde" };
+
+  function Replay(el) {
+    var d = DEMO[el.dataset.q];
+    if (!d) { el.hidden = true; return; }
+    var canvas = el.querySelector("canvas");
+    var cell = d.w <= 20 ? 28 : (d.w > 36 ? 12 : 18);
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = d.w * cell * dpr; canvas.height = d.h * cell * dpr;
+    canvas.style.aspectRatio = d.w + " / " + d.h;
+    var ctx = canvas.getContext("2d");
+    ctx.scale(dpr, dpr);
+    var wall = {}, i;
+    for (i = 0; i < d.walls.length; i++) wall[d.walls[i][0] + "," + d.walls[i][1]] = 1;
+    var tint = v(TINT[el.dataset.q]), pac = v("--pac"), food = v("--food");
+    var bg = v("--bg"), wallFill = v("--wall-fill"), wallLine = v("--wall");
+    function X(x) { return x * cell; }
+    function Y(y) { return (d.h - 1 - y) * cell; }
+    function isWall(x, y) { return x < 0 || y < 0 || x >= d.w || y >= d.h || wall[x + "," + y]; }
+
+    // Static maze layer, drawn once.
+    var base = document.createElement("canvas");
+    base.width = canvas.width; base.height = canvas.height;
+    var b = base.getContext("2d"); b.scale(dpr, dpr);
+    b.fillStyle = bg; b.fillRect(0, 0, d.w * cell, d.h * cell);
+    b.fillStyle = wallFill;
+    d.walls.forEach(function (p) { b.fillRect(X(p[0]), Y(p[1]), cell, cell); });
+    b.strokeStyle = wallLine; b.lineWidth = Math.max(1.5, cell / 9); b.lineCap = "round";
+    b.beginPath();
+    d.walls.forEach(function (p) {
+      var x = p[0], y = p[1], l = X(x), t = Y(y), o = b.lineWidth / 2;
+      if (!isWall(x, y + 1)) { b.moveTo(l, t + o); b.lineTo(l + cell, t + o); }
+      if (!isWall(x, y - 1)) { b.moveTo(l, t + cell - o); b.lineTo(l + cell, t + cell - o); }
+      if (!isWall(x - 1, y)) { b.moveTo(l + o, t); b.lineTo(l + o, t + cell); }
+      if (!isWall(x + 1, y)) { b.moveTo(l + cell - o, t); b.lineTo(l + cell - o, t + cell); }
+    });
+    b.stroke();
+
+    var nE = d.expanded.length, nP = d.path.length - 1;
+    function draw(e, p, mouth) {
+      ctx.drawImage(base, 0, 0, d.w * cell, d.h * cell);
+      var counts = {}, k, j;
+      for (j = 0; j < e; j++) { k = d.expanded[j][0] + "," + d.expanded[j][1]; counts[k] = (counts[k] || 0) + 1; }
+      var recent = Math.max(1, Math.ceil(nE / 60));
+      ctx.fillStyle = tint;
+      for (k in counts) {
+        var xy = k.split(","), pad = cell * 0.08;
+        ctx.globalAlpha = Math.min(0.62, 0.2 + 0.09 * counts[k]);
+        ctx.fillRect(X(+xy[0]) + pad, Y(+xy[1]) + pad, cell - 2 * pad, cell - 2 * pad);
+      }
+      // The newest expansions glow, to show where the search is right now.
+      ctx.globalAlpha = 0.95;
+      for (j = Math.max(0, e - recent); j < e && p === 0; j++) {
+        ctx.fillRect(X(d.expanded[j][0]) + 1, Y(d.expanded[j][1]) + 1, cell - 2, cell - 2);
+      }
+      ctx.globalAlpha = 1;
+      var eaten = {};
+      for (j = 0; j <= p; j++) eaten[d.path[j][0] + "," + d.path[j][1]] = 1;
+      ctx.fillStyle = food;
+      d.food.forEach(function (f) {
+        if (p && eaten[f[0] + "," + f[1]]) return;
+        ctx.beginPath(); ctx.arc(X(f[0]) + cell / 2, Y(f[1]) + cell / 2, Math.max(2, cell * 0.14), 0, 7); ctx.fill();
+      });
+      var pp = d.path[Math.min(p, nP)], dir = 0;
+      if (p > 0) {
+        ctx.strokeStyle = pac; ctx.lineWidth = Math.max(2, cell * 0.16); ctx.lineJoin = "round"; ctx.lineCap = "round";
+        ctx.beginPath();
+        for (j = 0; j <= p; j++) {
+          var cx = X(d.path[j][0]) + cell / 2, cy = Y(d.path[j][1]) + cell / 2;
+          if (j) ctx.lineTo(cx, cy); else ctx.moveTo(cx, cy);
+        }
+        ctx.stroke();
+        var prev = d.path[p - 1];
+        dir = Math.atan2(-(pp[1] - prev[1]), pp[0] - prev[0]);
+      }
+      var m = (mouth == null ? 0.22 : mouth) * Math.PI;
+      ctx.fillStyle = pac; ctx.beginPath();
+      var px = X(pp[0]) + cell / 2, py = Y(pp[1]) + cell / 2;
+      ctx.moveTo(px, py); ctx.arc(px, py, cell * 0.44, dir + m, dir + 2 * Math.PI - m); ctx.closePath(); ctx.fill();
+    }
+
+    var raf = 0;
+    function play() {
+      cancelAnimationFrame(raf);
+      if (reduce) { draw(nE, nP); return; }
+      var T1 = 3600, T2 = Math.min(3200, 60 * nP + 600), t0 = performance.now();
+      (function tick(now) {
+        var t = now - t0;
+        if (t < T1) draw(Math.ceil(nE * t / T1), 0);
+        else if (t < T1 + T2) {
+          var f = (t - T1) / T2;
+          draw(nE, Math.max(1, Math.ceil(nP * f)), 0.04 + 0.2 * Math.abs(Math.sin(t / 70)));
+        } else { draw(nE, nP); return; }
+        raf = requestAnimationFrame(tick);
+      })(t0);
+    }
+    draw(nE, nP);                       // complete picture at rest
+    el.querySelector(".replay").addEventListener("click", play);
+    return { play: play };
+  }
+
+  var replays = [];
+  document.querySelectorAll(".maze[data-q]").forEach(function (el) {
+    var r = Replay(el);
+    if (r) replays.push([el, r]);
+  });
+  if ("IntersectionObserver" in window && !reduce) {
+    var seen = new WeakSet();
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (en.isIntersecting && !seen.has(en.target)) {
+          seen.add(en.target);
+          replays.forEach(function (p) { if (p[0] === en.target) p[1].play(); });
+        }
+      });
+    }, { threshold: 0.5 });
+    replays.forEach(function (p) { io.observe(p[0]); });
+  }
+
+  /* ---------- slide navigation + active nav link ---------- */
+  var stops = Array.prototype.slice.call(document.querySelectorAll("main > section, .q"));
+  stops.sort(function (a, b) { return a.getBoundingClientRect().top - b.getBoundingClientRect().top; });
+  function current() {
+    var y = 90, best = 0;
+    stops.forEach(function (s, i) { if (s.getBoundingClientRect().top <= y) best = i; });
+    return best;
+  }
+  document.addEventListener("keydown", function (e) {
+    if (e.target.closest && e.target.closest("input, textarea, select, [contenteditable]")) return;
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    var i = current(), to = -1;
+    if (e.key === "ArrowRight" || e.key === "PageDown") to = Math.min(stops.length - 1, i + 1);
+    if (e.key === "ArrowLeft" || e.key === "PageUp") to = Math.max(0, i - 1);
+    if (to < 0) return;
+    e.preventDefault();
+    stops[to].scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+  });
+
+  var links = document.querySelectorAll(".nav a");
+  var secs = Array.prototype.map.call(links, function (a) { return document.querySelector(a.getAttribute("href")); });
+  function markNav() {
+    var on = -1;
+    secs.forEach(function (s, i) { if (s && s.getBoundingClientRect().top <= 120) on = i; });
+    links.forEach(function (a, i) { a.classList.toggle("on", i === on); });
+  }
+  window.addEventListener("scroll", markNav, { passive: true });
+  markNav();
+})();
+</script>
+</body>
+</html>
