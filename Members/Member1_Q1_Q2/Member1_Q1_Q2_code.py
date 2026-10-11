@@ -1,4 +1,4 @@
-# Q1 DFS + Q2 BFS  (goes into search.py)
+ # Q1 DFS + Q2 BFS  (goes into search.py)
 # Excerpt of the final integrated code in Group_Project/search/. Not runnable on its own.
 
 def depthFirstSearch(problem: SearchProblem):
@@ -18,7 +18,7 @@ def depthFirstSearch(problem: SearchProblem):
     "*** YOUR CODE HERE ***"
     # Q1 (Member 1): graph-search DFS. The fringe is a LIFO Stack, so the most
     # recently discovered node is expanded first (deepest-first).
-    fringe = util.Stack()
+    fringe = util.Stack() 
     fringe.push((problem.getStartState(), []))
     expanded = set()
     while not fringe.isEmpty():
