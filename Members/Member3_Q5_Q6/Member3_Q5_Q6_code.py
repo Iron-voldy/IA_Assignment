@@ -33,6 +33,7 @@ class CornersProblem(search.SearchProblem):
         # Q5 (Member 3): state = (position, visitedCorners). visitedCorners is a
         # tuple of 4 booleans aligned with self.corners, so the state is small
         # and hashable and contains no walls / GameState.
+        # One boolean per corner, True if Pacman already starts on that corner.
         visited = tuple(self.startingPosition == c for c in self.corners)
         return (self.startingPosition, visited)
 
