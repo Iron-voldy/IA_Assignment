@@ -1,45 +1,58 @@
-# Member 2 - Q3 Uniform Cost Search & Q4 A* Search
+# Member 2 – Q3 Uniform Cost Search & Q4 A* Search
 
 **Name:** Member2  |  **Student ID:** IT23516202  |  **Group:** Group_XX
 
-## What I was responsible for
-Implemented the cost-sensitive (informed) searches.
-
-## Files / functions I edited
-- `search.py` -> `uniformCostSearch(problem)` (Q3)
-- `search.py` -> `aStarSearch(problem, heuristic)` (Q4)
+## 1. What I did
+- Wrote `uniformCostSearch` (Q3) and `aStarSearch` (Q4) in `search.py`.
+- Reused Member 1's loop and changed the fringe to a **priority queue**.
+- Reviewed Member 3's pull request (Q5–Q6).
 - Full code: `Member2_Q3_Q4_code.py`
 
-## How it works
-- **UCS** uses `util.PriorityQueue`, priority = accumulated cost g(n). The fringe entry is `(state, path, cost)`. The goal is tested when a node is *popped*, which guarantees the cheapest path even with varying step costs (StayEastSearchAgent / StayWestSearchAgent use exponential cost functions).
-- **A*** is UCS with priority f(n) = g(n) + h(n). `nullHeuristic` (h=0) makes it identical to UCS. With an admissible + consistent h it stays optimal and expands fewer nodes (checked with `manhattanHeuristic` on bigMaze).
-
-## Results (autograder, local run)
-- Q3: PASS -> 4/4 marks
-- Q4: PASS (A* with Manhattan finds optimal cost 210 on bigMaze, expanding fewer nodes than UCS) -> 4/4 marks
-
-## How to run / verify
+## 2. Q3 – UCS
+```python
+fringe = util.PriorityQueue()
+fringe.push((problem.getStartState(), [], 0), 0)
+expanded = set()
+while not fringe.isEmpty():
+    state, path, cost = fringe.pop()
+    if problem.isGoalState(state):
+        return path
+    if state not in expanded:
+        expanded.add(state)
+        for successor, action, stepCost in problem.getSuccessors(state):
+            if successor not in expanded:
+                newCost = cost + stepCost
+                fringe.push((successor, path + [action], newCost), newCost)
+return []
 ```
+- Priority = **g**, the total cost of the path so far. The cheapest path comes out first.
+- Goal test when a node is **taken out**: by then no cheaper path is left, so the answer is optimal.
+- Works when steps have different costs (e.g. `mediumDottedMaze`, where the east is cheap).
+
+## 3. Q4 – A*
+- Same as UCS, but priority = **g + h** (cost so far + guess of cost left).
+- `h = nullHeuristic` (always 0) makes it exactly UCS.
+- With `manhattanHeuristic` on bigMaze: same 210-step path, **549** nodes instead of **620**.
+- Optimal when h is **admissible** (never too high) and, for graph search, **consistent**.
+- Members 3 and 4 pass their heuristics into this function.
+
+## 4. Results (autograder, 16 Oct 2026)
+| | Test | Result | Marks |
+|---|---|---|---|
+| Q3 UCS | 11 tests incl. `ucs_5_goalAtDequeue` | 3/3 | 4/4 |
+| Q4 A* | `astar_2_manhattan`: length 68, 221 nodes | 3/3 | 4/4 |
+
+## 5. Run it
+```bash
 cd Group_Project/search
 python autograder.py -q q3
 python autograder.py -q q4
-python pacman.py -l mediumMaze -p SearchAgent -a fn=ucs
+python pacman.py -l mediumDottedMaze -p StayEastSearchAgent
 python pacman.py -l bigMaze -z .5 -p SearchAgent -a fn=astar,heuristic=manhattanHeuristic
 ```
 
-## Viva cheat-sheet (be ready to answer these)
-- UCS vs BFS vs Dijkstra?
-- Why is the goal test done at pop time for UCS/A*?
-- Define admissible and consistent. Which one does graph-search A* need for optimality?
-- What does A* do with nullHeuristic? With a perfect heuristic?
-
-## Team workflow
-- Branch: work on your own feature branch, open a pull request into `main`.
-- You review the pull request of **Member 3 (Q5-Q6)** and run their autograder question yourself.
-- Before the viva, read ALL four code files and be able to explain every question.
-
-## My Git work (commit each step separately, with your own account)
-Suggested commits: "Add UCS with priority queue (Q3)", "Add A* search (Q4)", "Handle heuristic(successor) in A* push", "Refactor / comment UCS & A*".
-
-## AI usage
-Claude Code (Sonnet 5) generated the first version of the whole project; I read, ran and reviewed the code. Exact prompts are listed in Section 8 of the report.
+## 6. Viva points
+- Difference between UCS and BFS (costs vs steps).
+- Why goal test on pop, not on push (`goalAtDequeue` test).
+- f = g + h, and what admissible / consistent mean.
+- Why A* with Manhattan opens fewer nodes than UCS.

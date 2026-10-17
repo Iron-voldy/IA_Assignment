@@ -1,45 +1,59 @@
-# Member 3 - Q5 CornersProblem & Q6 Corners Heuristic
+# Member 3 – Q5 Corners Problem & Q6 Corners Heuristic
 
 **Name:** Member3  |  **Student ID:** IT23516303  |  **Group:** Group_XX
 
-## What I was responsible for
-Designed the state representation for the corners problem and its heuristic.
-
-## Files / functions I edited
-- `searchAgents.py` -> `CornersProblem.getStartState`, `isGoalState`, `getSuccessors` (Q5)
-- `searchAgents.py` -> `cornersHeuristic` (Q6)
+## 1. What I did
+- Designed `CornersProblem` (Q5) in `searchAgents.py`: start state, goal test, successors.
+- Wrote `cornersHeuristic` (Q6).
+- Reviewed Member 4's pull request (Q7).
 - Full code: `Member3_Q5_Q6_code.py`
 
-## How it works
-- **State** = `(position, visitedCorners)` where `visitedCorners` is a tuple of 4 booleans aligned with `self.corners`. Small and hashable; no walls or GameState stored.
-- **Goal**: `all(visitedCorners)`. **Successors**: for each legal non-wall move, mark the corner visited if the new position equals it; step cost 1.
-- **Heuristic**: relax the problem by removing walls; return the cheapest tour (Manhattan distances, brute-force over <= 4! orders) from Pacman through all unvisited corners. It is the exact optimum of a relaxed problem -> admissible, and consistent (one real step changes it by at most 1). Returns 0 at goals, never negative.
+## 2. Q5 – State design
+- **State = (position, visited)**, where `visited` is a tuple of 4 True/False flags, one per corner.
+- Only what changes goes in the state. Walls never change, so they stay outside. The state is small and hashable (it can go in the `expanded` set).
+- **Goal:** `all(visited)`.
+- **Successors:** for each move that does not hit a wall, the new position, plus the flags with a corner ticked if Pac-Man lands on it. Each step costs 1.
 
-## Results (autograder, local run)
-- Q5: PASS -> 8/8 marks
-- Q6: PASS, **741 nodes expanded** on mediumCorners (needs <=1200 for full marks), optimal path length 106 -> 8/8 marks
+```python
+def getStartState(self):
+    visited = tuple(self.startingPosition == c for c in self.corners)
+    return (self.startingPosition, visited)
 
-## How to run / verify
+def isGoalState(self, state):
+    return all(state[1])
 ```
+
+## 3. Q6 – Heuristic
+- **Relaxed problem:** pretend there are no walls.
+- Try every order of the corners still left (at most 4! = 24) and return the shortest Manhattan tour.
+- **Admissible:** walls only make walks longer, so the real cost is never less than this.
+- **Consistent:** one step changes the tour length by at most 1.
+
+```python
+def cheapestTour(current, todo):
+    if not todo:
+        return 0
+    return min(manhattan(current, c) + cheapestTour(c, [r for r in todo if r != c])
+               for c in todo)
+```
+
+## 4. Results (autograder, 16 Oct 2026)
+| | Layout | Path | Nodes | Autograder | Marks |
+|---|---|---|---|---|---|
+| Q5 (BFS) | mediumCorners | 106 | 1,966 | 3/3 | 8/8 |
+| Q6 (A* + heuristic) | mediumCorners | 106 | **741** (≤ 1,200 for full marks) | 3/3 | 8/8 |
+
+## 5. Run it
+```bash
 cd Group_Project/search
 python autograder.py -q q5
 python autograder.py -q q6
+python pacman.py -l mediumCorners -p SearchAgent -a fn=bfs,prob=CornersProblem
 python pacman.py -l mediumCorners -p AStarCornersAgent -z 0.5
 ```
 
-## Viva cheat-sheet (be ready to answer these)
-- Why not store the food grid or walls in the state? How big is the state space (positions x 2^4)?
-- Prove the heuristic is admissible and consistent.
-- What is a relaxed problem? Why is a max of Manhattan distances weaker than the tour?
-- Why is returning 0 at a goal required?
-
-## Team workflow
-- Branch: work on your own feature branch, open a pull request into `main`.
-- You review the pull request of **Member 4 (Q7)** and run their autograder question yourself.
-- Before the viva, read ALL four code files and be able to explain every question.
-
-## My Git work (commit each step separately, with your own account)
-Suggested commits: "Add corners state representation (Q5)", "Implement getSuccessors with visited corners", "Add Manhattan-tour corners heuristic (Q6)", "Tune/comment heuristic".
-
-## AI usage
-Claude Code (Sonnet 5) generated the first version of the whole project; I read, ran and reviewed the code. Exact prompts are listed in Section 8 of the report.
+## 6. Viva points
+- Why the state holds visited flags and not the whole grid.
+- Why tuples (hashable) and not lists.
+- What a relaxed problem is and why it gives an admissible heuristic.
+- Why the tour, and not just the nearest or farthest corner (tighter guess, fewer nodes).
